@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -41,7 +41,11 @@ void main() async {
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // راه‌اندازی Tapsell
-  await TapsellPlus.instance.initialize(TAPSELL_API_KEY);
+  try {
+    await TapsellPlus.instance.initialize(TAPSELL_API_KEY);
+  } catch (e) {
+    if (kDebugMode) print('Tapsell init error: $e');
+  }
 
   runApp(const HooshyarApp());
 }
@@ -961,12 +965,9 @@ class _ChatScreenState extends State<ChatScreen> {
           TapsellPlus.instance.showAd(
             ad,
             onRewarded: (reward) {
-              // کاربر ویدیو رو کامل دید
               _claimReward();
             },
-            onAdClosed: (ad) {
-              // کاربر بست
-            },
+            onAdClosed: (ad) {},
             onError: (error) {},
           );
         },
@@ -979,7 +980,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // دریافت پاداش از سرور
   Future<void> _claimReward() async {
     try {
       final res = await http.post(
@@ -1055,7 +1055,6 @@ class _ChatScreenState extends State<ChatScreen> {
       _hideThinking();
 
       if (res.statusCode == 429) {
-        // محدودیت روزانه
         setState(() {
           _messages.add(Message(
             text: data['message'] ?? 'محدودیت روزانه',
@@ -1066,7 +1065,6 @@ class _ChatScreenState extends State<ChatScreen> {
           _maxVideos = data['maxVideos'] ?? 5;
         });
 
-        // اگه می‌تونه ویدیو ببینه، دکمه نشون بده
         if (data['canWatchAd'] == true) {
           Future.delayed(const Duration(milliseconds: 500), () {
             _showRewardDialog();
@@ -1104,7 +1102,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // دیالوگ تماشای ویدیو
   void _showRewardDialog() {
     showDialog(
       context: context,
@@ -1712,8 +1709,6 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
 
   int _msgIndex = 0;
   Timer? _msgTimer;
-  String? _bannerResponseId;
-  bool _bannerLoaded = false;
 
   final List<String> _messages = [
     'در حال پردازش درخواست شما...',
@@ -1744,32 +1739,6 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
         _msgIndex = (_msgIndex + 1) % _messages.length;
       });
     });
-
-    // 🎯 درخواست بنر تبلیغاتی
-    _requestBannerAd();
-  }
-
-  void _requestBannerAd() {
-    try {
-      TapsellPlus.instance.requestAd(
-        TAPSELL_BANNER_ZONE,
-        onAdAvailable: (ad) {
-          if (mounted) {
-            setState(() {
-              _bannerResponseId = ad;
-              _bannerLoaded = true;
-            });
-          }
-        },
-        onError: (error) {
-          if (kDebugMode) {
-            print('Banner error: ${error.errorMessage}');
-          }
-        },
-      );
-    } catch (e) {
-      if (kDebugMode) print('Banner exception: $e');
-    }
   }
 
   @override
@@ -1990,25 +1959,10 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
                 ],
               ),
             ),
-            // 🎯 بنر تبلیغاتی
+            // 🎯 جایگاه بنر تبلیغاتی
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-              child: _bannerLoaded && _bannerResponseId != null
-                  ? Container(
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: kSurface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: kBrand.withOpacity(0.3)),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: TapsellPlusBanner(
-                          responseId: _bannerResponseId!,
-                        ),
-                      ),
-                    )
-                  : _buildPlaceholderBanner(),
+              child: _buildAdPlaceholder(),
             ),
           ],
         ),
@@ -2016,7 +1970,7 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
     );
   }
 
-  Widget _buildPlaceholderBanner() {
+  Widget _buildAdPlaceholder() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -2052,7 +2006,7 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
         ),
         Container(
           height: 60,
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [
@@ -2064,15 +2018,44 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: kBrand.withOpacity(0.4)),
           ),
-          child: const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: kBrand2,
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [kAccent2, Color(0xFFFF8866)],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Center(
+                  child: Text('🎁', style: TextStyle(fontSize: 18)),
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'تبلیغ شما اینجا',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'به‌زودی از Tapsell',
+                      style: TextStyle(fontSize: 10, color: kTextDim),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ],
