@@ -1,0 +1,45 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.3'
+          channel: 'stable'
+          cache: true
+
+      - name: Set pub mirror
+        run: |
+          echo "PUB_HOSTED_URL=https://pub.flutter-io.cn" >> $GITHUB_ENV
+          echo "FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn" >> $GITHUB_ENV
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hooshyar-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
