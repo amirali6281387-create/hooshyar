@@ -36,14 +36,23 @@ const LinearGradient kUserGradient = LinearGradient(
   colors: [Color(0xFF7C5CFF), Color(0xFFA78BFA)],
 );
 
+// ==================== MAIN ====================
+// ✅ اینجا با try/catch و timeout امن شده تا کرش نکنه
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
+  // Tapsell رو امن راه‌اندازی کن (اگه خطا داد، اپ ادامه بده)
   try {
-    await TapsellPlus.instance.initialize(TAPSELL_API_KEY);
+    await TapsellPlus.instance
+        .initialize(TAPSELL_API_KEY)
+        .timeout(const Duration(seconds: 5));
+    if (kDebugMode) {
+      TapsellPlus.instance.setDebugMode(LogLevel.Debug);
+    }
   } catch (e) {
-    if (kDebugMode) print('Tapsell init error: $e');
+    if (kDebugMode) print('Tapsell init failed: $e');
+    // اپ ادامه بده حتی اگه Tapsell خطا داد
   }
 
   runApp(const HooshyarApp());
@@ -95,16 +104,20 @@ class _AppFlowState extends State<AppFlow> {
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool('onboarding_seen') ?? false;
 
+    // ✅ اینجا هم با try/catch امن شده
     _showInterstitial();
 
     if (!mounted) return;
     setState(() => stage = seen ? 2 : 1);
   }
 
+  // 🎯 نمایش تبلیغ آنی (Interstitial) - API نسخه 2.x
   Future<void> _showInterstitial() async {
     try {
       final responseId = await TapsellPlus.instance
           .requestInterstitialAd(TAPSELL_INTERSTITIAL_ZONE);
+
+      if (responseId.isEmpty) return;
 
       await TapsellPlus.instance.showInterstitialAd(
         responseId,
@@ -786,7 +799,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-// انیمیشن شناور
 class _FloatingBox extends StatefulWidget {
   final Widget child;
   const _FloatingBox({required this.child});
@@ -958,10 +970,16 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  // 🎯 نمایش تبلیغ ویدیویی جایزه‌ای - API نسخه 2.x
   Future<void> _showRewardedVideo() async {
     try {
       final responseId = await TapsellPlus.instance
           .requestRewardedVideoAd(TAPSELL_REWARDED_ZONE);
+
+      if (responseId.isEmpty) {
+        _showToast('⚠️ تبلیغ در دسترس نیست');
+        return;
+      }
 
       await TapsellPlus.instance.showRewardedVideoAd(
         responseId,

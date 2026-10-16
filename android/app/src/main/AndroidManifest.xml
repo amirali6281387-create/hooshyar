@@ -1,8 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- 🌐 مجوز اینترنت -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    
+    <!-- 📸 مجوز خواندن عکس -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    
+    <!-- 🎯 مجوز تبلیغات (الزامی برای Tapsell در اندروید ۱۳+) -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
 
     <application
         android:label="هوشیار"
