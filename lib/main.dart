@@ -8,10 +8,17 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tapsell_plus/tapsell_plus.dart';
 import 'package:uuid/uuid.dart';
 
-// 🌐 آدرس Worker خودت
+// 🌐 آدرس Worker
 const String API_URL = 'https://ai-assistant.amirali6281387.workers.dev';
+
+// 🎯 Tapsell
+const String TAPSELL_API_KEY = 'sdsdftnpetlllqqsogjrsfkpeokciqtbgkdisnlflekdmqoadhdojfnpsfjdssljnjhfba';
+const String TAPSELL_BANNER_ZONE = '6ad24575949be22d4df3a662';
+const String TAPSELL_INTERSTITIAL_ZONE = '6ad246e89140ba2215e772df';
+const String TAPSELL_REWARDED_ZONE = '6ad247169140ba2215e772e0';
 
 // 🎨 رنگ‌ها
 const Color kBg = Color(0xFF06070F);
@@ -29,9 +36,13 @@ const LinearGradient kUserGradient = LinearGradient(
   colors: [Color(0xFF7C5CFF), Color(0xFFA78BFA)],
 );
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // راه‌اندازی Tapsell
+  await TapsellPlus.instance.initialize(TAPSELL_API_KEY);
+
   runApp(const HooshyarApp());
 }
 
@@ -80,8 +91,31 @@ class _AppFlowState extends State<AppFlow> {
     await Future.delayed(const Duration(milliseconds: 4000));
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool('onboarding_seen') ?? false;
+
+    // نمایش Interstitial بعد از اسپلش
+    _showInterstitial();
+
     if (!mounted) return;
     setState(() => stage = seen ? 2 : 1);
+  }
+
+  // 🎯 نمایش تبلیغ آنی
+  void _showInterstitial() {
+    try {
+      TapsellPlus.instance.requestAd(
+        TAPSELL_INTERSTITIAL_ZONE,
+        onAdAvailable: (ad) {
+          TapsellPlus.instance.showAd(ad);
+        },
+        onError: (error) {
+          if (kDebugMode) {
+            print('Interstitial error: ${error.errorMessage}');
+          }
+        },
+      );
+    } catch (e) {
+      if (kDebugMode) print('Interstitial exception: $e');
+    }
   }
 
   Future<void> _finishOnboarding() async {
@@ -455,7 +489,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       'icon': '🚀',
       'title': 'همه چی\nآماده‌ست!',
       'desc':
-          'حالا می‌تونی شروع کنی. هر سوالی داری بپرس.\n\nروزانه ۱۰۰ سوال رایگان داری! 🎁',
+          'حالا می‌تونی شروع کنی. هر سوالی داری بپرس.\n\nروزانه ۲۵ سوال رایگان داری! 🎁',
       'illustrationColors': [Color(0xFF00FF88), kAccent],
     },
   ];
@@ -747,7 +781,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-// انیمیشن شناور
 class _FloatingBox extends StatefulWidget {
   final Widget child;
   const _FloatingBox({required this.child});
@@ -826,7 +859,10 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _selectedImageBase64;
   String _deviceId = '';
   bool _isLoading = false;
-  int _remaining = 100;
+  int _remaining = 25;
+  int _currentLimit = 25;
+  int _videosWatched = 0;
+  int _maxVideos = 5;
 
   @override
   void initState() {
@@ -874,9 +910,9 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final picked = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 60,
+        maxWidth: 400,
+        maxHeight: 400,
+        imageQuality: 40,
       );
       if (picked != null) {
         final bytes = await picked.readAsBytes();
@@ -913,6 +949,62 @@ class _ChatScreenState extends State<ChatScreen> {
   void _hideThinking() {
     if (Navigator.of(context, rootNavigator: true).canPop()) {
       Navigator.of(context, rootNavigator: true).pop();
+    }
+  }
+
+  // 🎯 نمایش تبلیغ ویدیویی جایزه‌ای
+  void _showRewardedVideo() {
+    try {
+      TapsellPlus.instance.requestAd(
+        TAPSELL_REWARDED_ZONE,
+        onAdAvailable: (ad) {
+          TapsellPlus.instance.showAd(
+            ad,
+            onRewarded: (reward) {
+              // کاربر ویدیو رو کامل دید
+              _claimReward();
+            },
+            onAdClosed: (ad) {
+              // کاربر بست
+            },
+            onError: (error) {},
+          );
+        },
+        onError: (error) {
+          _showToast('⚠️ خطا در بارگذاری ویدیو');
+        },
+      );
+    } catch (e) {
+      _showToast('⚠️ خطا در بارگذاری ویدیو');
+    }
+  }
+
+  // دریافت پاداش از سرور
+  Future<void> _claimReward() async {
+    try {
+      final res = await http.post(
+        Uri.parse(API_URL),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-ID': _deviceId,
+        },
+        body: jsonEncode({'action': 'reward'}),
+      );
+
+      final data = jsonDecode(res.body);
+
+      if (data['success'] == true) {
+        setState(() {
+          _currentLimit = data['newLimit'];
+          _remaining = data['newLimit'];
+          _videosWatched = data['videosWatched'];
+        });
+        _showToast('🎉 ${data['message']}');
+      } else {
+        _showToast('⚠️ ${data['message']}');
+      }
+    } catch (e) {
+      _showToast('❌ خطا در ارتباط با سرور');
     }
   }
 
@@ -963,17 +1055,29 @@ class _ChatScreenState extends State<ChatScreen> {
       _hideThinking();
 
       if (res.statusCode == 429) {
+        // محدودیت روزانه
         setState(() {
           _messages.add(Message(
             text: data['message'] ?? 'محدودیت روزانه',
             isUser: false,
           ));
+          _currentLimit = data['currentLimit'] ?? _currentLimit;
+          _videosWatched = data['videosWatched'] ?? _videosWatched;
+          _maxVideos = data['maxVideos'] ?? 5;
         });
+
+        // اگه می‌تونه ویدیو ببینه، دکمه نشون بده
+        if (data['canWatchAd'] == true) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _showRewardDialog();
+          });
+        }
       } else if (data['response'] != null &&
           data['response'].toString().isNotEmpty) {
         setState(() {
           _messages.add(Message(text: data['response'], isUser: false));
           _remaining = data['remaining'] ?? _remaining - 1;
+          _currentLimit = data['currentLimit'] ?? _currentLimit;
         });
       } else {
         setState(() {
@@ -998,6 +1102,90 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) setState(() => _isLoading = false);
       _scrollToBottom();
     }
+  }
+
+  // دیالوگ تماشای ویدیو
+  void _showRewardDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF0A0E27),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: kBrand.withOpacity(0.5)),
+          ),
+          content: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF5C8A), Color(0xFFFF8866)],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: kAccent2.withOpacity(0.5),
+                        blurRadius: 30,
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text('🎬', style: TextStyle(fontSize: 40)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  '🎁 ۱۰۰ پیام هدیه بگیر!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'یه ویدیو ۳۰ ثانیه‌ای ببین و ۱۰۰ پیام اضافی بگیر!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: kTextDim, fontSize: 13, height: 1.7),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'ویدیوهای دیده‌شده: $_videosWatched / $_maxVideos',
+                  style: const TextStyle(color: kMuted, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('بعداً',
+                  style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showRewardedVideo();
+              },
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('تماشای ویدیو'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kAccent2,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _scrollToBottom() {
@@ -1043,6 +1231,19 @@ class _ChatScreenState extends State<ChatScreen> {
               child: const Text('پاک کن'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showToast(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text),
+        backgroundColor: kBrand,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     );
@@ -1142,7 +1343,7 @@ class _ChatScreenState extends State<ChatScreen> {
               border: Border.all(color: kBrand.withOpacity(0.3)),
             ),
             child: Text(
-              '$_remaining باقی‌مونده',
+              '$_remaining از $_currentLimit',
               style: const TextStyle(
                 color: kBrand2,
                 fontSize: 10,
@@ -1495,7 +1696,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-// ==================== AI THINKING SCREEN ====================
+// ==================== AI THINKING + BANNER AD ====================
 class AIThinkingScreen extends StatefulWidget {
   const AIThinkingScreen({super.key});
 
@@ -1511,6 +1712,8 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
 
   int _msgIndex = 0;
   Timer? _msgTimer;
+  String? _bannerResponseId;
+  bool _bannerLoaded = false;
 
   final List<String> _messages = [
     'در حال پردازش درخواست شما...',
@@ -1541,6 +1744,32 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
         _msgIndex = (_msgIndex + 1) % _messages.length;
       });
     });
+
+    // 🎯 درخواست بنر تبلیغاتی
+    _requestBannerAd();
+  }
+
+  void _requestBannerAd() {
+    try {
+      TapsellPlus.instance.requestAd(
+        TAPSELL_BANNER_ZONE,
+        onAdAvailable: (ad) {
+          if (mounted) {
+            setState(() {
+              _bannerResponseId = ad;
+              _bannerLoaded = true;
+            });
+          }
+        },
+        onError: (error) {
+          if (kDebugMode) {
+            print('Banner error: ${error.errorMessage}');
+          }
+        },
+      );
+    } catch (e) {
+      if (kDebugMode) print('Banner exception: $e');
+    }
   }
 
   @override
@@ -1761,9 +1990,25 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
                 ],
               ),
             ),
+            // 🎯 بنر تبلیغاتی
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-              child: _buildAdBanner(),
+              child: _bannerLoaded && _bannerResponseId != null
+                  ? Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: kSurface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: kBrand.withOpacity(0.3)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: TapsellPlusBanner(
+                          responseId: _bannerResponseId!,
+                        ),
+                      ),
+                    )
+                  : _buildPlaceholderBanner(),
             ),
           ],
         ),
@@ -1771,7 +2016,7 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
     );
   }
 
-  Widget _buildAdBanner() {
+  Widget _buildPlaceholderBanner() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1806,7 +2051,8 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
           ),
         ),
         Container(
-          padding: const EdgeInsets.all(12),
+          height: 60,
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [
@@ -1818,86 +2064,15 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: kBrand.withOpacity(0.4)),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [kAccent2, Color(0xFFFF8866)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: kAccent2.withOpacity(0.4),
-                      blurRadius: 20,
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text('🎁', style: TextStyle(fontSize: 22)),
-                ),
+          child: const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: kBrand2,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Text(
-                          'پیشنهاد ویژه امروز',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [kAccent2, Color(0xFFFF8866)],
-                            ),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            '٪۵۰ تخفیف',
-                            style: TextStyle(
-                              fontSize: 8,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'با کلیک روی این بنر، از تخفیف‌های ویژه بهره‌مند شوید',
-                      style: TextStyle(fontSize: 10.5, color: kTextDim),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: kBrand.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: kBrand.withOpacity(0.4)),
-                ),
-                child: const Icon(
-                  Icons.arrow_back,
-                  color: kBrand2,
-                  size: 16,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ],

@@ -28,11 +28,12 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.hooshyar"
+        applicationId = "ir.amirali.hooshyar"
         minSdk = 21
         targetSdk = 34
         versionCode = flutter.versionCode()
         versionName = flutter.versionName()
+        multiDexEnabled = true
     }
 
     signingConfigs {
