@@ -40,12 +40,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  // راه‌اندازی Tapsell
   try {
     await TapsellPlus.instance.initialize(TAPSELL_API_KEY);
-    if (kDebugMode) {
-      TapsellPlus.instance.setDebugMode(LogLevel.Debug);
-    }
   } catch (e) {
     if (kDebugMode) print('Tapsell init error: $e');
   }
@@ -99,19 +95,17 @@ class _AppFlowState extends State<AppFlow> {
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool('onboarding_seen') ?? false;
 
-    // نمایش Interstitial بعد از اسپلش
     _showInterstitial();
 
     if (!mounted) return;
     setState(() => stage = seen ? 2 : 1);
   }
 
-  // 🎯 نمایش تبلیغ آنی (Interstitial) - API نسخه 2.x
   Future<void> _showInterstitial() async {
     try {
       final responseId = await TapsellPlus.instance
           .requestInterstitialAd(TAPSELL_INTERSTITIAL_ZONE);
-      
+
       await TapsellPlus.instance.showInterstitialAd(
         responseId,
         onOpened: (map) {
@@ -149,9 +143,689 @@ class _AppFlowState extends State<AppFlow> {
 }
 
 // ==================== SPLASH ====================
-// (کد SplashScreen بدون تغییر - از پیام قبلی کپی کن)
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _rotateCtrl;
+  late AnimationController _pulseCtrl;
+  late AnimationController _orbitCtrl;
+
+  int _progress = 0;
+  String _status = 'راه‌اندازی سیستم...';
+  Timer? _progressTimer;
+
+  final List<Map<String, dynamic>> _steps = [
+    {'progress': 10, 'status': 'راه‌اندازی سیستم...'},
+    {'progress': 25, 'status': 'اتصال به هوش مصنوعی...'},
+    {'progress': 45, 'status': 'بارگذاری مدل‌های زبانی...'},
+    {'progress': 65, 'status': 'آماده‌سازی رابط کاربری...'},
+    {'progress': 85, 'status': 'بهینه‌سازی تجربه کاربری...'},
+    {'progress': 100, 'status': 'آماده! 🚀'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _rotateCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _orbitCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+
+    _runProgress();
+  }
+
+  void _runProgress() {
+    int i = 0;
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 600), (t) {
+      if (i >= _steps.length) {
+        t.cancel();
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _progress = _steps[i]['progress'];
+        _status = _steps[i]['status'];
+      });
+      i++;
+    });
+  }
+
+  @override
+  void dispose() {
+    _progressTimer?.cancel();
+    _rotateCtrl.dispose();
+    _pulseCtrl.dispose();
+    _orbitCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF06070F), Color(0xFF0A0820), Color(0xFF12082B)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              const Spacer(flex: 2),
+              SizedBox(
+                width: 200,
+                height: 200,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    ...List.generate(4, (i) {
+                      final sizes = [90.0, 110.0, 130.0, 150.0];
+                      final colors = [kBrand, kAccent, kAccent2, kBrand2];
+                      return AnimatedBuilder(
+                        animation: _rotateCtrl,
+                        builder: (context, child) {
+                          final dir = i.isEven ? 1 : -1;
+                          return Transform.rotate(
+                            angle: _rotateCtrl.value * 2 * math.pi * dir,
+                            child: Container(
+                              width: sizes[i],
+                              height: sizes[i],
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: SweepGradient(
+                                  colors: [
+                                    colors[i].withOpacity(0.9),
+                                    colors[i].withOpacity(0.0),
+                                  ],
+                                  stops: const [0.0, 1.0],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }),
+                    AnimatedBuilder(
+                      animation: _orbitCtrl,
+                      builder: (context, child) {
+                        return Transform.rotate(
+                          angle: _orbitCtrl.value * 2 * math.pi,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              _particle(75, kBrand, 0),
+                              _particle(65, kAccent, 90),
+                              _particle(85, kAccent2, 180),
+                              _particle(70, kBrand2, 270),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    AnimatedBuilder(
+                      animation: _pulseCtrl,
+                      builder: (context, child) {
+                        final scale = 1.0 + (_pulseCtrl.value * 0.08);
+                        return Transform.scale(
+                          scale: scale,
+                          child: Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: kGradient,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: kBrand.withOpacity(
+                                      0.7 + (_pulseCtrl.value * 0.3)),
+                                  blurRadius: 60 + (_pulseCtrl.value * 40),
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child:
+                                  Text('✨', style: TextStyle(fontSize: 32)),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 40),
+              ShaderMask(
+                shaderCallback: (r) => kGradient.createShader(r),
+                child: const Text(
+                  'هوشیار',
+                  style: TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'دستیار هوشمند فارسی',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: kTextDim,
+                  letterSpacing: 1,
+                ),
+              ),
+              const Spacer(flex: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 60),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'در حال بارگذاری',
+                          style: TextStyle(fontSize: 11, color: kMuted),
+                        ),
+                        Text(
+                          '${_toPersian(_progress)}٪',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: kBrand2,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: kBrand.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 400),
+                          width: MediaQuery.of(context).size.width *
+                              0.72 *
+                              (_progress / 100),
+                          decoration: BoxDecoration(
+                            gradient: kGradient,
+                            boxShadow: [
+                              BoxShadow(
+                                color: kBrand.withOpacity(0.8),
+                                blurRadius: 15,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Text(
+                        _status,
+                        key: ValueKey(_status),
+                        style: const TextStyle(fontSize: 12, color: kTextDim),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(flex: 1),
+              const Text(
+                'نسخه ۱.۰.۰ · ساخته شده با ❤️',
+                style: TextStyle(fontSize: 10, color: kMuted),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _particle(double radius, Color color, double startAngle) {
+    final angle = startAngle * math.pi / 180;
+    return Transform.translate(
+      offset: Offset(
+        math.cos(angle) * radius,
+        math.sin(angle) * radius,
+      ),
+      child: Container(
+        width: 6,
+        height: 6,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: color, blurRadius: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _toPersian(int n) {
+    const digits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    return n.toString().split('').map((d) => digits[int.parse(d)]).join();
+  }
+}
+
 // ==================== ONBOARDING ====================
-// (کد OnboardingScreen بدون تغییر - از پیام قبلی کپی کن)
+class OnboardingScreen extends StatefulWidget {
+  final VoidCallback onFinish;
+  const OnboardingScreen({super.key, required this.onFinish});
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final PageController _ctrl = PageController();
+  int _page = 0;
+
+  final List<Map<String, dynamic>> _pages = [
+    {
+      'icon': '✨',
+      'title': 'به هوشیار\nخوش اومدی!',
+      'desc': 'دستیار هوشمند فارسی‌زبان که همیشه آماده کمکه.',
+      'illustrationColors': [kBrand, kBrand2],
+    },
+    {
+      'icon': '🎯',
+      'title': 'چیکار می‌تونم\nبکنم؟',
+      'desc': '',
+      'features': [
+        {'icon': '💬', 'title': 'چت هوشمند', 'desc': 'پاسخ دقیق به هر سوالی'},
+        {'icon': '📸', 'title': 'تحلیل عکس', 'desc': 'عکس بفرست، تحلیل بگیر'},
+        {
+          'icon': '🌍',
+          'title': 'ترجمه و خلاصه',
+          'desc': 'به ۱۰۰+ زبان زنده دنیا'
+        },
+      ],
+      'illustrationColors': [Color(0xFF00E5FF), kBrand],
+    },
+    {
+      'icon': '💡',
+      'title': 'چطور استفاده\nکنم؟',
+      'desc': '',
+      'features': [
+        {
+          'icon': '✍️',
+          'title': '۱. سوالت رو بنویس',
+          'desc': 'توی باکس پایین صفحه'
+        },
+        {
+          'icon': '📎',
+          'title': '۲. عکس پیوست کن',
+          'desc': 'اختیاری، برای تحلیل تصویر'
+        },
+        {
+          'icon': '🚀',
+          'title': '۳. ارسال کن',
+          'desc': 'پاسخ هوشمند در چند ثانیه'
+        },
+      ],
+      'illustrationColors': [kAccent2, kBrand2],
+    },
+    {
+      'icon': '🚀',
+      'title': 'همه چی\nآماده‌ست!',
+      'desc':
+          'حالا می‌تونی شروع کنی. هر سوالی داری بپرس.\n\nروزانه ۲۵ سوال رایگان داری! 🎁',
+      'illustrationColors': [Color(0xFF00FF88), kAccent],
+    },
+  ];
+
+  void _next() {
+    if (_page < _pages.length - 1) {
+      _ctrl.nextPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    } else {
+      widget.onFinish();
+    }
+  }
+
+  void _prev() {
+    if (_page > 0) {
+      _ctrl.previousPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF06070F), Color(0xFF0A0820)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    if (_page < _pages.length - 1)
+                      TextButton(
+                        onPressed: widget.onFinish,
+                        child: const Text(
+                          'رد کردن',
+                          style: TextStyle(color: kTextDim),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: PageView.builder(
+                  controller: _ctrl,
+                  onPageChanged: (i) => setState(() => _page = i),
+                  itemCount: _pages.length,
+                  itemBuilder: (_, i) => _buildPage(_pages[i]),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  _pages.length,
+                  (i) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: _page == i ? 24 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      gradient: _page == i ? kUserGradient : null,
+                      color: _page == i ? null : kBrand.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(4),
+                      boxShadow: _page == i
+                          ? [
+                              BoxShadow(
+                                color: kBrand.withOpacity(0.6),
+                                blurRadius: 12,
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 30),
+                child: Row(
+                  children: [
+                    if (_page > 0)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _prev,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            side: BorderSide(color: kBrand.withOpacity(0.3)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text(
+                            'قبلی',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (_page > 0) const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: GestureDetector(
+                        onTap: _next,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          decoration: BoxDecoration(
+                            gradient: kUserGradient,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: kBrand.withOpacity(0.4),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _page == _pages.length - 1
+                                    ? 'شروع کن 🚀'
+                                    : 'بعدی',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (_page < _pages.length - 1) ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_back,
+                                    color: Colors.white, size: 16),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPage(Map<String, dynamic> page) {
+    final colors = page['illustrationColors'] as List<Color>;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _FloatingBox(
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: colors),
+                borderRadius: BorderRadius.circular(48),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors[0].withOpacity(0.5),
+                    blurRadius: 60,
+                    spreadRadius: 5,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  page['icon'],
+                  style: const TextStyle(fontSize: 80),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 40),
+          ShaderMask(
+            shaderCallback: (r) => kGradient.createShader(r),
+            child: Text(
+              page['title'],
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                height: 1.3,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if ((page['desc'] as String).isNotEmpty)
+            Text(
+              page['desc'],
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: kTextDim,
+                height: 1.9,
+              ),
+            ),
+          if (page['features'] != null) ...[
+            const SizedBox(height: 24),
+            ...List.generate((page['features'] as List).length, (i) {
+              final f = page['features'][i];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: kSurface.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: kBrand.withOpacity(0.15)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: kBrand.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: kBrand.withOpacity(0.4)),
+                        ),
+                        child: Center(
+                          child: Text(
+                            f['icon'],
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              f['title'],
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              f['desc'],
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: kTextDim,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// انیمیشن شناور
+class _FloatingBox extends StatefulWidget {
+  final Widget child;
+  const _FloatingBox({required this.child});
+
+  @override
+  State<_FloatingBox> createState() => _FloatingBoxState();
+}
+
+class _FloatingBoxState extends State<_FloatingBox>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, child) => Transform.translate(
+        offset: Offset(0, -10 * _ctrl.value),
+        child: child,
+      ),
+      child: widget.child,
+    );
+  }
+}
 
 // ==================== CHAT SCREEN ====================
 class Message {
@@ -196,16 +870,11 @@ class _ChatScreenState extends State<ChatScreen> {
   int _videosWatched = 0;
   int _maxVideos = 5;
 
-  // 🎯 Banner responseId
-  String? _bannerResponseId;
-
   @override
   void initState() {
     super.initState();
     _initDeviceId();
     _loadHistory();
-    // پیش‌بارگذاری بنر
-    _requestBannerAd();
   }
 
   Future<void> _initDeviceId() async {
@@ -216,25 +885,6 @@ class _ChatScreenState extends State<ChatScreen> {
       await prefs.setString('device_id', id);
     }
     if (mounted) setState(() => _deviceId = id!);
-  }
-
-  // 🎯 درخواست بنر تبلیغاتی - API نسخه 2.x
-  Future<void> _requestBannerAd() async {
-    try {
-      final responseId = await TapsellPlus.instance.requestStandardBannerAd(
-        TAPSELL_BANNER_ZONE,
-        TapsellPlusBannerType.BANNER_320x50,
-        onResponse: (map) {
-          if (kDebugMode) print('Banner response: $map');
-        },
-        onError: (map) {
-          if (kDebugMode) print('Banner error: $map');
-        },
-      );
-      if (mounted) setState(() => _bannerResponseId = responseId);
-    } catch (e) {
-      if (kDebugMode) print('Banner exception: $e');
-    }
   }
 
   Future<void> _loadHistory() async {
@@ -308,7 +958,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // 🎯 نمایش تبلیغ ویدیویی جایزه‌ای - API نسخه 2.x
   Future<void> _showRewardedVideo() async {
     try {
       final responseId = await TapsellPlus.instance
@@ -320,7 +969,6 @@ class _ChatScreenState extends State<ChatScreen> {
           if (kDebugMode) print('Rewarded video opened');
         },
         onRewarded: (map) {
-          // کاربر ویدیو رو کامل دید
           _claimReward();
         },
         onClosed: (map) {
@@ -1064,7 +1712,6 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
 
   int _msgIndex = 0;
   Timer? _msgTimer;
-  String? _bannerResponseId;
 
   final List<String> _messages = [
     'در حال پردازش درخواست شما...',
@@ -1095,46 +1742,6 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
         _msgIndex = (_msgIndex + 1) % _messages.length;
       });
     });
-
-    // 🎯 درخواست بنر
-    _requestBannerAd();
-  }
-
-  // 🎯 API نسخه 2.x برای بنر
-  Future<void> _requestBannerAd() async {
-    try {
-      await TapsellPlus.instance.requestStandardBannerAd(
-        TAPSELL_BANNER_ZONE,
-        TapsellPlusBannerType.BANNER_320x50,
-        onResponse: (map) {
-          if (mounted) {
-            setState(() => _bannerResponseId = map['response_id']);
-          }
-        },
-        onError: (map) {
-          if (kDebugMode) print('Banner error: ${map['error_message']}');
-        },
-      );
-    } catch (e) {
-      if (kDebugMode) print('Banner exception: $e');
-    }
-  }
-
-  // 🎯 نمایش بنر
-  Future<void> _showBanner() async {
-    if (_bannerResponseId == null) return;
-    try {
-      await TapsellPlus.instance.showStandardBannerAd(
-        _bannerResponseId!,
-        TapsellPlusHorizontalGravity.BOTTOM,
-        TapsellPlusVerticalGravity.CENTER,
-        margin: const EdgeInsets.only(bottom: 20),
-        onOpened: (map) {},
-        onError: (map) {},
-      );
-    } catch (e) {
-      if (kDebugMode) print('Show banner error: $e');
-    }
   }
 
   @override
@@ -1143,10 +1750,6 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
     _rotateCtrl.dispose();
     _pulseCtrl.dispose();
     _progressCtrl.dispose();
-    // 🎯 پاک کردن بنر
-    if (_bannerResponseId != null) {
-      TapsellPlus.instance.destroyStandardBanner(_bannerResponseId!);
-    }
     super.dispose();
   }
 
@@ -1161,7 +1764,6 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // ... انیمیشن مغز AI (بدون تغییر)
                   SizedBox(
                     width: 160,
                     height: 160,
@@ -1360,7 +1962,7 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
                 ],
               ),
             ),
-            // 🎯 بنر تبلیغاتی (جایگاه رزرو شده)
+            // 🎯 جایگاه بنر تبلیغاتی
             Container(
               height: 60,
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -1369,23 +1971,16 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: kBrand.withOpacity(0.3)),
               ),
-              child: _bannerResponseId != null
-                  ? const Center(
-                      child: Text(
-                        'بنر در حال نمایش',
-                        style: TextStyle(color: kTextDim, fontSize: 10),
-                      ),
-                    )
-                  : const Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: kBrand2,
-                        ),
-                      ),
-                    ),
+              child: const Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: kBrand2,
+                  ),
+                ),
+              ),
             ),
           ],
         ),
