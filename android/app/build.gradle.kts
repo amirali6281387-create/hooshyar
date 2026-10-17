@@ -14,8 +14,8 @@ plugins {
 }
 
 android {
-    // 🎯 شناسه یکتای اپ که توی مایکت و تپسل ثبت کردی
-    namespace = "ir.amirali.hooshyar"
+    // 👈 نام پکیج جدید (یکتا برای مایکت)
+    namespace = "com.amirali.hooshyarai"
     compileSdk = 34
     ndkVersion = flutter.ndkVersion
 
@@ -29,17 +29,13 @@ android {
     }
 
     defaultConfig {
-        applicationId = "ir.amirali.hooshyar"
+        // 👈 این هم باید با namespace یکی باشه
+        applicationId = "com.amirali.hooshyarai"
         minSdk = 21
         targetSdk = 34
         versionCode = flutter.versionCode()
         versionName = flutter.versionName()
-        
-        // 🎯 فعال‌سازی MultiDex (به خاطر حجم بالای کدهای تپسل)
         multiDexEnabled = true
-        
-        // 🎯 کلید تپسل برای استفاده در AndroidManifest (حیاتی برای جلوگیری از کرش)
-        manifestPlaceholders["TapsellMediationAppKey"] = "sdsdftnpetlllqqsogjrsfkpeokciqtbgkdisnlflekdmqoadhdojfnpsfjdssljnjhfba"
     }
 
     signingConfigs {
@@ -53,7 +49,6 @@ android {
 
     buildTypes {
         release {
-            // حفظ امضای اپ برای انتشار در مایکت
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
