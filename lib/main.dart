@@ -16,7 +16,6 @@ const String API_URL = 'https://ai-assistant.amirali6281387.workers.dev';
 
 // 🎯 Tapsell
 const String TAPSELL_API_KEY = 'sdsdftnpetlllqqsogjrsfkpeokciqtbgkdisnlflekdmqoadhdojfnpsfjdssljnjhfba';
-const String TAPSELL_BANNER_ZONE = '6ad24575949be22d4df3a662';
 const String TAPSELL_INTERSTITIAL_ZONE = '6ad246e89140ba2215e772df';
 const String TAPSELL_REWARDED_ZONE = '6ad247169140ba2215e772e0';
 
@@ -37,22 +36,25 @@ const LinearGradient kUserGradient = LinearGradient(
 );
 
 // ==================== MAIN ====================
-// ✅ اینجا با try/catch و timeout امن شده تا کرش نکنه
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  // Tapsell رو امن راه‌اندازی کن (اگه خطا داد، اپ ادامه بده)
+  // ✅ Tapsell رو امن راه‌اندازی کن
   try {
     await TapsellPlus.instance
         .initialize(TAPSELL_API_KEY)
         .timeout(const Duration(seconds: 5));
+    
     if (kDebugMode) {
-      TapsellPlus.instance.setDebugMode(LogLevel.Debug);
+      // برای جلوگیری از خطای نبودن LogLevel در برخی نسخه‌ها، در بلاک امن قرار گرفت
+      try {
+        TapsellPlus.instance.setDebugMode(LogLevel.Debug);
+      } catch (_) {}
     }
+    if (kDebugMode) print('✅ Tapsell initialized successfully');
   } catch (e) {
-    if (kDebugMode) print('Tapsell init failed: $e');
-    // اپ ادامه بده حتی اگه Tapsell خطا داد
+    if (kDebugMode) print('❌ Tapsell init error: $e');
   }
 
   runApp(const HooshyarApp());
@@ -104,35 +106,39 @@ class _AppFlowState extends State<AppFlow> {
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool('onboarding_seen') ?? false;
 
-    // ✅ اینجا هم با try/catch امن شده
     _showInterstitial();
 
     if (!mounted) return;
     setState(() => stage = seen ? 2 : 1);
   }
 
-  // 🎯 نمایش تبلیغ آنی (Interstitial) - API نسخه 2.x
   Future<void> _showInterstitial() async {
     try {
       final responseId = await TapsellPlus.instance
-          .requestInterstitialAd(TAPSELL_INTERSTITIAL_ZONE);
+          .requestInterstitialAd(TAPSELL_INTERSTITIAL_ZONE)
+          .timeout(const Duration(seconds: 10));
 
-      if (responseId.isEmpty) return;
+      if (responseId == null || responseId.isEmpty) {
+        if (kDebugMode) print('Interstitial: ad not available');
+        return;
+      }
 
+      if (!mounted) return;
+      
       await TapsellPlus.instance.showInterstitialAd(
         responseId,
         onOpened: (map) {
-          if (kDebugMode) print('Interstitial opened');
+          if (kDebugMode) print('✅ Interstitial opened');
         },
         onClosed: (map) {
-          if (kDebugMode) print('Interstitial closed');
+          if (kDebugMode) print('✅ Interstitial closed');
         },
         onError: (map) {
-          if (kDebugMode) print('Interstitial error: ${map['error_message']}');
+          if (kDebugMode) print('❌ Interstitial error: ${map['error_message']}');
         },
       );
     } catch (e) {
-      if (kDebugMode) print('Interstitial exception: $e');
+      if (kDebugMode) print('❌ Interstitial exception: $e');
     }
   }
 
@@ -912,7 +918,9 @@ class _ChatScreenState extends State<ChatScreen> {
             );
           });
         }
-      } catch (_) {}
+      } catch (e) {
+        if (kDebugMode) print('Error loading history: $e');
+      }
     }
   }
 
@@ -941,7 +949,10 @@ class _ChatScreenState extends State<ChatScreen> {
           });
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) print('Error picking image: $e');
+      _showToast('❌ خطا در انتخاب عکس');
+    }
   }
 
   void _clearImage() {
@@ -965,38 +976,48 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _hideThinking() {
-    if (Navigator.of(context, rootNavigator: true).canPop()) {
-      Navigator.of(context, rootNavigator: true).pop();
+    try {
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error hiding thinking: $e');
     }
   }
 
-  // 🎯 نمایش تبلیغ ویدیویی جایزه‌ای - API نسخه 2.x
   Future<void> _showRewardedVideo() async {
     try {
       final responseId = await TapsellPlus.instance
-          .requestRewardedVideoAd(TAPSELL_REWARDED_ZONE);
+          .requestRewardedVideoAd(TAPSELL_REWARDED_ZONE)
+          .timeout(const Duration(seconds: 10));
 
-      if (responseId.isEmpty) {
+      if (responseId == null || responseId.isEmpty) {
         _showToast('⚠️ تبلیغ در دسترس نیست');
+        if (kDebugMode) print('Rewarded video: ad not available');
         return;
       }
+
+      if (!mounted) return;
 
       await TapsellPlus.instance.showRewardedVideoAd(
         responseId,
         onOpened: (map) {
-          if (kDebugMode) print('Rewarded video opened');
+          if (kDebugMode) print('✅ Rewarded video opened');
         },
         onRewarded: (map) {
+          if (kDebugMode) print('✅ User rewarded');
           _claimReward();
         },
         onClosed: (map) {
-          if (kDebugMode) print('Rewarded video closed');
+          if (kDebugMode) print('✅ Rewarded video closed');
         },
         onError: (map) {
+          if (kDebugMode) print('❌ Rewarded video error: $map');
           _showToast('⚠️ خطا در نمایش ویدیو');
         },
       );
     } catch (e) {
+      if (kDebugMode) print('❌ Rewarded video exception: $e');
       _showToast('⚠️ خطا در بارگذاری ویدیو');
     }
   }
@@ -1010,21 +1031,24 @@ class _ChatScreenState extends State<ChatScreen> {
           'X-Device-ID': _deviceId,
         },
         body: jsonEncode({'action': 'reward'}),
-      );
+      ).timeout(const Duration(seconds: 10));
+
+      if (!mounted) return;
 
       final data = jsonDecode(res.body);
 
       if (data['success'] == true) {
         setState(() {
-          _currentLimit = data['newLimit'];
-          _remaining = data['newLimit'];
-          _videosWatched = data['videosWatched'];
+          _currentLimit = data['newLimit'] ?? _currentLimit;
+          _remaining = data['newLimit'] ?? _currentLimit;
+          _videosWatched = data['videosWatched'] ?? _videosWatched;
         });
-        _showToast('🎉 ${data['message']}');
+        _showToast('🎉 ${data['message'] ?? 'جایزه دریافت شد!'}');
       } else {
-        _showToast('⚠️ ${data['message']}');
+        _showToast('⚠️ ${data['message'] ?? 'خطا'}');
       }
     } catch (e) {
+      if (kDebugMode) print('Error claiming reward: $e');
       _showToast('❌ خطا در ارتباط با سرور');
     }
   }
@@ -1068,12 +1092,25 @@ class _ChatScreenState extends State<ChatScreen> {
           'X-Device-ID': _deviceId,
         },
         body: jsonEncode(body),
-      );
-
-      final data = jsonDecode(res.body);
+      ).timeout(const Duration(seconds: 30));
 
       if (!mounted) return;
       _hideThinking();
+
+      // 🛡️ اصلاح امن برای جلوگیری از کرش در صورت خرابی پاسخ سرور
+      dynamic data;
+      try {
+        data = jsonDecode(res.body);
+      } catch (e) {
+        if (kDebugMode) print('JSON Parse Error: $e');
+        setState(() {
+          _messages.add(Message(
+            text: '❌ خطای سرور: پاسخ نامعتبر',
+            isUser: false,
+          ));
+        });
+        return;
+      }
 
       if (res.statusCode == 429) {
         setState(() {
@@ -1088,14 +1125,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
         if (data['canWatchAd'] == true) {
           Future.delayed(const Duration(milliseconds: 500), () {
-            _showRewardDialog();
+            if (mounted) _showRewardDialog();
           });
         }
       } else if (data['response'] != null &&
           data['response'].toString().isNotEmpty) {
         setState(() {
           _messages.add(Message(text: data['response'], isUser: false));
-          _remaining = data['remaining'] ?? _remaining - 1;
+          _remaining = data['remaining'] ?? (_remaining - 1);
           _currentLimit = data['currentLimit'] ?? _currentLimit;
         });
       } else {
@@ -1111,9 +1148,10 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       if (!mounted) return;
       _hideThinking();
+      if (kDebugMode) print('Error sending message: $e');
       setState(() {
         _messages.add(Message(
-          text: '❌ خطا در ارتباط با سرور',
+          text: '❌ خطا: ${e.toString()}',
           isUser: false,
         ));
       });
@@ -1714,7 +1752,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-// ==================== AI THINKING + BANNER ====================
+// ==================== AI THINKING (بدون بنر) ====================
 class AIThinkingScreen extends StatefulWidget {
   const AIThinkingScreen({super.key});
 
@@ -1978,26 +2016,6 @@ class _AIThinkingScreenState extends State<AIThinkingScreen>
                     }),
                   ),
                 ],
-              ),
-            ),
-            // 🎯 جایگاه بنر تبلیغاتی
-            Container(
-              height: 60,
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-              decoration: BoxDecoration(
-                color: kSurface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: kBrand.withOpacity(0.3)),
-              ),
-              child: const Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: kBrand2,
-                  ),
-                ),
               ),
             ),
           ],
