@@ -14,7 +14,6 @@ dependencies:
   shared_preferences: ^2.3.3
   image_picker: ^1.1.2
   uuid: ^4.5.0
-  tapsell_plus: ^2.3.2
 
 dev_dependencies:
   flutter_test:

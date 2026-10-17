@@ -2,22 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tapsell_plus/tapsell_plus.dart';
 import 'package:uuid/uuid.dart';
 
 // 🌐 آدرس Worker
 const String API_URL = 'https://ai-assistant.amirali6281387.workers.dev';
-
-// 🎯 Tapsell
-const String TAPSELL_API_KEY = 'sdsdftnpetlllqqsogjrsfkpeokciqtbgkdisnlflekdmqoadhdojfnpsfjdssljnjhfba';
-const String TAPSELL_INTERSTITIAL_ZONE = '6ad246e89140ba2215e772df';
-const String TAPSELL_REWARDED_ZONE = '6ad247169140ba2215e772e0';
 
 // 🎨 رنگ‌ها
 const Color kBg = Color(0xFF06070F);
@@ -29,21 +23,17 @@ const Color kAccent2 = Color(0xFFFF5C8A);
 const Color kGold = Color(0xFFFFD700);
 const Color kTextDim = Color(0xFF8B8FAE);
 const Color kMuted = Color(0xFF5A5F7E);
-const LinearGradient kGradient = LinearGradient(colors: [Color(0xFF7C5CFF), Color(0xFFA78BFA), Color(0xFF00E5FF)]);
-const LinearGradient kUserGradient = LinearGradient(colors: [Color(0xFF7C5CFF), Color(0xFFA78BFA)]);
-const LinearGradient kGoldGradient = LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]);
+const LinearGradient kGradient = LinearGradient(
+    colors: [Color(0xFF7C5CFF), Color(0xFFA78BFA), Color(0xFF00E5FF)]);
+const LinearGradient kUserGradient =
+    LinearGradient(colors: [Color(0xFF7C5CFF), Color(0xFFA78BFA)]);
+const LinearGradient kGoldGradient =
+    LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]);
 
 // ==================== MAIN ====================
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-
-  try {
-    await TapsellPlus.instance.initialize(TAPSELL_API_KEY).timeout(const Duration(seconds: 5));
-  } catch (e) {
-    if (kDebugMode) print('Tapsell init failed: $e');
-  }
-
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const HooshyarApp());
 }
 
@@ -60,7 +50,8 @@ class HooshyarApp extends StatelessWidget {
         scaffoldBackgroundColor: kBg,
         colorScheme: const ColorScheme.dark(primary: kBrand, secondary: kAccent),
       ),
-      home: const Directionality(textDirection: TextDirection.rtl, child: SplashScreen()),
+      home: const Directionality(
+          textDirection: TextDirection.rtl, child: SplashScreen()),
     );
   }
 }
@@ -72,7 +63,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
   late AnimationController _rotateCtrl;
   late AnimationController _pulseCtrl;
   int _progress = 0;
@@ -90,8 +82,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _rotateCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat();
-    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
+    _rotateCtrl = AnimationController(
+        vsync: this, duration: const Duration(seconds: 3))
+      ..repeat();
+    _pulseCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1800))
+      ..repeat(reverse: true);
     _runProgress();
   }
 
@@ -117,7 +113,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => const AppFlow(),
         transitionDuration: const Duration(milliseconds: 500),
-        transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
       ),
     );
   }
@@ -135,14 +132,19 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF06070F), Color(0xFF0A0820), Color(0xFF12082B)]),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF06070F), Color(0xFF0A0820), Color(0xFF12082B)],
+          ),
         ),
         child: SafeArea(
           child: Column(
             children: [
               const Spacer(flex: 2),
               SizedBox(
-                width: 200, height: 200,
+                width: 200,
+                height: 200,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
@@ -153,8 +155,21 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         animation: _rotateCtrl,
                         builder: (context, child) {
                           return Transform.rotate(
-                            angle: _rotateCtrl.value * 2 * math.pi * (i.isEven ? 1 : -1),
-                            child: Container(width: sizes[i], height: sizes[i], decoration: BoxDecoration(shape: BoxShape.circle, gradient: SweepGradient(colors: [colors[i].withOpacity(0.9), colors[i].withOpacity(0.0)], stops: const [0.0, 1.0]))),
+                            angle: _rotateCtrl.value *
+                                2 *
+                                math.pi *
+                                (i.isEven ? 1 : -1),
+                            child: Container(
+                              width: sizes[i],
+                              height: sizes[i],
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: SweepGradient(colors: [
+                                  colors[i].withOpacity(0.9),
+                                  colors[i].withOpacity(0.0),
+                                ], stops: const [0.0, 1.0]),
+                              ),
+                            ),
                           );
                         },
                       );
@@ -165,9 +180,23 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         return Transform.scale(
                           scale: 1.0 + (_pulseCtrl.value * 0.08),
                           child: Container(
-                            width: 70, height: 70,
-                            decoration: BoxDecoration(shape: BoxShape.circle, gradient: kGradient, boxShadow: [BoxShadow(color: kBrand.withOpacity(0.7 + (_pulseCtrl.value * 0.3)), blurRadius: 60 + (_pulseCtrl.value * 40), spreadRadius: 5)]),
-                            child: const Center(child: Text('✨', style: TextStyle(fontSize: 32))),
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: kGradient,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: kBrand.withOpacity(
+                                      0.7 + (_pulseCtrl.value * 0.3)),
+                                  blurRadius: 60 + (_pulseCtrl.value * 40),
+                                  spreadRadius: 5,
+                                )
+                              ],
+                            ),
+                            child: const Center(
+                                child: Text('✨',
+                                    style: TextStyle(fontSize: 32))),
                           ),
                         );
                       },
@@ -176,9 +205,17 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                 ),
               ),
               const SizedBox(height: 40),
-              ShaderMask(shaderCallback: (r) => kGradient.createShader(r), child: const Text('هوشیار', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800, color: Colors.white))),
+              ShaderMask(
+                shaderCallback: (r) => kGradient.createShader(r),
+                child: const Text('هوشیار',
+                    style: TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+              ),
               const SizedBox(height: 8),
-              const Text('دستیار هوشمند فارسی', style: TextStyle(fontSize: 13, color: kTextDim)),
+              const Text('دستیار هوشمند فارسی',
+                  style: TextStyle(fontSize: 13, color: kTextDim)),
               const Spacer(),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 60),
@@ -187,26 +224,48 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('در حال بارگذاری', style: TextStyle(fontSize: 11, color: kMuted)),
-                        Text('$_progress٪', style: const TextStyle(fontSize: 11, color: kBrand2, fontWeight: FontWeight.bold)),
+                        const Text('در حال بارگذاری',
+                            style:
+                                TextStyle(fontSize: 11, color: kMuted)),
+                        Text('$_progress٪',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: kBrand2,
+                                fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Container(
                       height: 5,
-                      decoration: BoxDecoration(color: kBrand.withOpacity(0.12), borderRadius: BorderRadius.circular(3)),
+                      decoration: BoxDecoration(
+                          color: kBrand.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(3)),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(3),
-                        child: AnimatedContainer(duration: const Duration(milliseconds: 400), width: MediaQuery.of(context).size.width * 0.72 * (_progress / 100), decoration: BoxDecoration(gradient: kGradient)),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 400),
+                          width: MediaQuery.of(context).size.width *
+                              0.72 *
+                              (_progress / 100),
+                          decoration:
+                              const BoxDecoration(gradient: kGradient),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    AnimatedSwitcher(duration: const Duration(milliseconds: 300), child: Text(_status, key: ValueKey(_status), style: const TextStyle(fontSize: 12, color: kTextDim))),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Text(_status,
+                          key: ValueKey(_status),
+                          style: const TextStyle(
+                              fontSize: 12, color: kTextDim)),
+                    ),
                   ],
                 ),
               ),
               const Spacer(),
-              const Text('نسخه ۱.۰.۰ · ساخته شده با ❤️', style: TextStyle(fontSize: 10, color: kMuted)),
+              const Text('نسخه ۱.۰.۰ · ساخته شده با ❤️',
+                  style: TextStyle(fontSize: 10, color: kMuted)),
               const SizedBox(height: 20),
             ],
           ),
@@ -231,12 +290,13 @@ class _AppFlowState extends State<AppFlow> {
   void initState() {
     super.initState();
     _loadPremiumStatus();
-    _showInterstitial(); // نمایش تبلیغ بعد از لود شدن
   }
 
   Future<void> _loadPremiumStatus() async {
     final prefs = await SharedPreferences.getInstance();
-    if (mounted) setState(() => _isPremium = prefs.getBool('is_premium') ?? false);
+    if (mounted) {
+      setState(() => _isPremium = prefs.getBool('is_premium') ?? false);
+    }
   }
 
   Future<void> _simulatePurchase() async {
@@ -245,19 +305,12 @@ class _AppFlowState extends State<AppFlow> {
     if (mounted) {
       setState(() => _isPremium = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🎉 تبریک! به هوش برتر دسترسی پیدا کردید.'), backgroundColor: kGold),
+        const SnackBar(
+          content: Text('🎉 تبریک! به هوش برتر دسترسی پیدا کردید.'),
+          backgroundColor: kGold,
+        ),
       );
     }
-  }
-
-  void _showInterstitial() {
-    try {
-      TapsellPlus.instance.requestInterstitialAd(TAPSELL_INTERSTITIAL_ZONE).then((responseId) {
-        if (responseId != null && responseId.isNotEmpty) {
-          TapsellPlus.instance.showInterstitialAd(responseId);
-        }
-      }).catchError((e) => print('Interstitial error: $e'));
-    } catch (e) {}
   }
 
   @override
@@ -267,23 +320,22 @@ class _AppFlowState extends State<AppFlow> {
         index: _currentIndex,
         children: [
           const ChatScreen(isPremium: false),
-          _isPremium 
+          _isPremium
               ? const ChatScreen(isPremium: true)
               : ProLockScreen(onPurchase: _simulatePurchase),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index == 1 && _currentIndex == 0) _showInterstitial(); // تبلیغ هنگام رفتن به تب پرو
-          setState(() => _currentIndex = index);
-        },
+        onTap: (index) => setState(() => _currentIndex = index),
         backgroundColor: const Color(0xFF0A0820),
         selectedItemColor: _currentIndex == 1 ? kGold : kBrand2,
         unselectedItemColor: kTextDim,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'هوشیار'),
-          BottomNavigationBarItem(icon: Icon(Icons.workspace_premium), label: 'هوش برتر'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline), label: 'هوشیار'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.workspace_premium), label: 'هوش برتر'),
         ],
       ),
     );
@@ -308,13 +360,28 @@ class ProLockScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.workspace_premium, size: 80, color: kGold),
                 const SizedBox(height: 20),
-                ShaderMask(shaderCallback: (r) => kGoldGradient.createShader(r), child: const Text('هوش برتر (Pro)', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white))),
+                ShaderMask(
+                  shaderCallback: (r) => kGoldGradient.createShader(r),
+                  child: const Text('هوش برتر (Pro)',
+                      style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                ),
                 const SizedBox(height: 15),
-                const Text('تجربه گفتگو با پیشرفته‌ترین مدل هوش مصنوعی!', textAlign: TextAlign.center, style: TextStyle(color: kTextDim, fontSize: 14)),
+                const Text(
+                  'تجربه گفتگو با پیشرفته‌ترین مدل هوش مصنوعی!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: kTextDim, fontSize: 14),
+                ),
                 const SizedBox(height: 30),
                 Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: kSurface, borderRadius: BorderRadius.circular(16), border: Border.all(color: kGold.withOpacity(0.3))),
+                  decoration: BoxDecoration(
+                    color: kSurface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: kGold.withOpacity(0.3)),
+                  ),
                   child: const Column(
                     children: [
                       _FeatureItem(text: 'هوش بسیار بالاتر (GPT-OSS-120B)'),
@@ -326,11 +393,21 @@ class ProLockScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 30),
                 SizedBox(
-                  width: double.infinity, height: 55,
+                  width: double.infinity,
+                  height: 55,
                   child: ElevatedButton(
                     onPressed: onPurchase,
-                    style: ElevatedButton.styleFrom(backgroundColor: kGold, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                    child: const Text('ارتقا به نسخه Pro (۵۰,۰۰۰ تومان)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kGold,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: const Text(
+                      'ارتقا به نسخه Pro (۵۰,۰۰۰ تومان)',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ],
@@ -349,7 +426,13 @@ class _FeatureItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(children: [const Icon(Icons.check_circle, color: kGold, size: 20), const SizedBox(width: 10), Expanded(child: Text(text, style: const TextStyle(color: Colors.white)))]),
+      child: Row(children: [
+        const Icon(Icons.check_circle, color: kGold, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Text(text,
+                style: const TextStyle(color: Colors.white))),
+      ]),
     );
   }
 }
@@ -360,8 +443,15 @@ class Message {
   final bool isUser;
   final String? imageBase64;
   Message({required this.text, required this.isUser, this.imageBase64});
-  Map<String, dynamic> toJson() => {'text': text, 'isUser': isUser, 'imageBase64': imageBase64};
-  factory Message.fromJson(Map<String, dynamic> json) => Message(text: json['text'] ?? '', isUser: json['isUser'] ?? false, imageBase64: json['imageBase64']);
+
+  Map<String, dynamic> toJson() =>
+      {'text': text, 'isUser': isUser, 'imageBase64': imageBase64};
+
+  factory Message.fromJson(Map<String, dynamic> json) => Message(
+        text: json['text'] ?? '',
+        isUser: json['isUser'] ?? false,
+        imageBase64: json['imageBase64'],
+      );
 }
 
 class ChatScreen extends StatefulWidget {
@@ -383,8 +473,6 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
   int _remaining = 25;
   int _currentLimit = 25;
-  int _videosWatched = 0;
-  int _maxVideos = 5;
 
   @override
   void initState() {
@@ -396,66 +484,72 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _initDeviceId() async {
     final prefs = await SharedPreferences.getInstance();
     String? id = prefs.getString('device_id');
-    if (id == null) { id = const Uuid().v4(); await prefs.setString('device_id', id); }
+    if (id == null) {
+      id = const Uuid().v4();
+      await prefs.setString('device_id', id);
+    }
     if (mounted) setState(() => _deviceId = id!);
   }
 
   Future<void> _loadHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(widget.isPremium ? 'chat_history_pro' : 'chat_history_free');
+    final saved = prefs.getString(
+        widget.isPremium ? 'chat_history_pro' : 'chat_history_free');
     if (saved != null) {
       try {
         final list = jsonDecode(saved) as List;
-        if (mounted) setState(() => _messages.addAll(list.map((m) => Message.fromJson(m as Map<String, dynamic>))));
+        if (mounted) {
+          setState(() => _messages.addAll(
+              list.map((m) => Message.fromJson(m as Map<String, dynamic>))));
+        }
       } catch (_) {}
     }
   }
 
   Future<void> _saveHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(widget.isPremium ? 'chat_history_pro' : 'chat_history_free', jsonEncode(_messages.map((m) => m.toJson()).toList()));
+    await prefs.setString(
+      widget.isPremium ? 'chat_history_pro' : 'chat_history_free',
+      jsonEncode(_messages.map((m) => m.toJson()).toList()),
+    );
   }
 
   Future<void> _pickImage() async {
     try {
-      final picked = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 400, maxHeight: 400, imageQuality: 40);
+      final picked = await _picker.pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 400,
+          maxHeight: 400,
+          imageQuality: 40);
       if (picked != null) {
         final bytes = await picked.readAsBytes();
-        if (mounted) setState(() { _selectedImage = File(picked.path); _selectedImageBase64 = base64Encode(bytes); });
+        if (mounted) {
+          setState(() {
+            _selectedImage = File(picked.path);
+            _selectedImageBase64 = base64Encode(bytes);
+          });
+        }
       }
     } catch (_) {}
   }
 
   void _showThinking() {
     showGeneralDialog(
-      context: context, barrierDismissible: false, barrierColor: Colors.transparent, transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (_, __, ___) => AIThinkingScreen(isPremium: widget.isPremium),
-      transitionBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (_, __, ___) =>
+          AIThinkingScreen(isPremium: widget.isPremium),
+      transitionBuilder: (_, anim, __, child) =>
+          FadeTransition(opacity: anim, child: child),
     );
   }
 
   void _hideThinking() {
-    if (Navigator.of(context, rootNavigator: true).canPop()) Navigator.of(context, rootNavigator: true).pop();
-  }
-
-  Future<void> _showRewardedVideo() async {
-    try {
-      final responseId = await TapsellPlus.instance.requestRewardedVideoAd(TAPSELL_REWARDED_ZONE);
-      if (responseId != null && responseId.isNotEmpty) {
-        TapsellPlus.instance.showRewardedVideoAd(responseId, onRewarded: (map) => _claimReward());
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _claimReward() async {
-    try {
-      final res = await http.post(Uri.parse(API_URL), headers: {'Content-Type': 'application/json', 'X-Device-ID': _deviceId}, body: jsonEncode({'action': 'reward'}));
-      final data = jsonDecode(res.body);
-      if (data['success'] == true) {
-        setState(() { _currentLimit = data['newLimit']; _remaining = data['newLimit']; _videosWatched = data['videosWatched']; });
-        _showToast('🎉 ${data['message']}');
-      }
-    } catch (_) {}
+    if (Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
   }
 
   Future<void> _send() async {
@@ -464,7 +558,11 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_isLoading) return;
 
     final userText = text.isEmpty ? '📸 عکس فرستادم' : text;
-    setState(() { _messages.add(Message(text: userText, isUser: true, imageBase64: _selectedImageBase64)); _isLoading = true; });
+    setState(() {
+      _messages.add(Message(
+          text: userText, isUser: true, imageBase64: _selectedImageBase64));
+      _isLoading = true;
+    });
     _controller.clear();
     _showThinking();
     _scrollToBottom();
@@ -472,12 +570,27 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final body = <String, dynamic>{
         'prompt': text.isEmpty ? 'این عکس را به فارسی توصیف کن' : text,
-        'history': _messages.where((m) => !m.isUser).map((m) => {'role': 'assistant', 'content': m.text}).toList(),
+        'history': _messages
+            .where((m) => !m.isUser)
+            .map((m) => {'role': 'assistant', 'content': m.text})
+            .toList(),
         'isPremium': widget.isPremium,
       };
-      if (_selectedImageBase64 != null) body['imageBase64'] = _selectedImageBase64;
+      if (_selectedImageBase64 != null) {
+        body['imageBase64'] = _selectedImageBase64;
+      }
 
-      final res = await http.post(Uri.parse(API_URL), headers: {'Content-Type': 'application/json', 'X-Device-ID': _deviceId}, body: jsonEncode(body)).timeout(const Duration(seconds: 90));
+      final res = await http
+          .post(
+            Uri.parse(API_URL),
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Device-ID': _deviceId,
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 90));
+
       if (!mounted) return;
       _hideThinking();
 
@@ -485,73 +598,95 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (res.statusCode == 429) {
         setState(() {
-          _messages.add(Message(text: data['message'] ?? 'محدودیت', isUser: false));
+          _messages.add(Message(
+              text: data['message'] ?? 'محدودیت', isUser: false));
           _currentLimit = data['currentLimit'] ?? _currentLimit;
-          _videosWatched = data['videosWatched'] ?? _videosWatched;
-          _maxVideos = data['maxVideos'] ?? 5;
         });
-        if (data['canWatchAd'] == true) _showRewardDialog();
       } else if (data['response'] != null) {
-        setState(() { _messages.add(Message(text: data['response'], isUser: false)); _remaining = data['remaining'] ?? _remaining - 1; });
+        setState(() {
+          _messages.add(Message(text: data['response'], isUser: false));
+          _remaining = data['remaining'] ?? _remaining - 1;
+        });
       } else {
-        setState(() => _messages.add(Message(text: 'خطا: ${data['message'] ?? 'مشکل نامشخص'}', isUser: false)));
+        setState(() => _messages.add(Message(
+            text: 'خطا: ${data['message'] ?? 'مشکل نامشخص'}',
+            isUser: false)));
       }
       await _saveHistory();
-      setState(() { _selectedImage = null; _selectedImageBase64 = null; });
+      setState(() {
+        _selectedImage = null;
+        _selectedImageBase64 = null;
+      });
     } catch (e) {
       if (!mounted) return;
       _hideThinking();
-      setState(() => _messages.add(Message(text: '❌ خطا در ارتباط با سرور', isUser: false)));
+      if (kDebugMode) print('Send error: $e');
+      setState(() => _messages
+          .add(Message(text: '❌ خطا در ارتباط با سرور', isUser: false)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
       _scrollToBottom();
     }
   }
 
-  void _showRewardDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: kSurface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: kGold.withOpacity(0.5))),
-          title: const Text('🎁 ۱۰۰ پیام هدیه!', style: TextStyle(color: kGold, fontSize: 18)),
-          content: const Text('با تماشای یک ویدیو ۳۰ ثانیه‌ای، ۱۰۰ پیام بیشتر دریافت کن.', style: TextStyle(color: Colors.white70)),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('بعداً', style: TextStyle(color: Colors.white54))),
-            ElevatedButton(onPressed: () { Navigator.pop(ctx); _showRewardedVideo(); }, style: ElevatedButton.styleFrom(backgroundColor: kGold), child: const Text('تماشای ویدیو', style: TextStyle(color: Colors.black))),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _scrollToBottom() => Future.delayed(const Duration(milliseconds: 100), () { if (_scrollController.hasClients) _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut); });
-
-  void _showToast(String text) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text), backgroundColor: kBrand, behavior: SnackBarBehavior.floating));
+  void _scrollToBottom() => Future.delayed(
+        const Duration(milliseconds: 100),
+        () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        },
+      );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent, elevation: 0,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Row(
           children: [
-            Icon(widget.isPremium ? Icons.workspace_premium : Icons.smart_toy, color: widget.isPremium ? kGold : kBrand2),
+            Icon(
+                widget.isPremium
+                    ? Icons.workspace_premium
+                    : Icons.smart_toy,
+                color: widget.isPremium ? kGold : kBrand2),
             const SizedBox(width: 8),
-            Text(widget.isPremium ? 'هوش برتر' : 'هوشیار', style: TextStyle(color: widget.isPremium ? kGold : kBrand2, fontWeight: FontWeight.bold)),
+            Text(
+              widget.isPremium ? 'هوش برتر' : 'هوشیار',
+              style: TextStyle(
+                  color: widget.isPremium ? kGold : kBrand2,
+                  fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         actions: [
           if (!widget.isPremium)
-            Padding(padding: const EdgeInsets.only(left: 16), child: Center(child: Text('$_remaining از $_currentLimit', style: const TextStyle(color: kTextDim, fontSize: 12))))
+            Padding(
+              padding: const EdgeInsets.only(left: 16),
+              child: Center(
+                child: Text('$_remaining از $_currentLimit',
+                    style: const TextStyle(
+                        color: kTextDim, fontSize: 12)),
+              ),
+            )
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-            Expanded(child: _messages.isEmpty ? Center(child: Text('سلام! من ${widget.isPremium ? 'هوش برتر' : 'هوشیار'} هستم.', style: const TextStyle(color: kTextDim))) : _buildChatList()),
+            Expanded(
+              child: _messages.isEmpty
+                  ? Center(
+                      child: Text(
+                          'سلام! من ${widget.isPremium ? 'هوش برتر' : 'هوشیار'} هستم.',
+                          style: const TextStyle(color: kTextDim)))
+                  : _buildChatList(),
+            ),
             if (_selectedImage != null) _buildImagePreview(),
             _buildInputArea(),
           ],
@@ -562,23 +697,43 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildChatList() {
     return ListView.builder(
-      controller: _scrollController, padding: const EdgeInsets.all(16), itemCount: _messages.length,
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: _messages.length,
       itemBuilder: (context, i) {
         final msg = _messages[i];
         return Align(
-          alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+          alignment:
+              msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
-            margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              gradient: msg.isUser ? kUserGradient : null, color: msg.isUser ? null : kSurface,
+              gradient: msg.isUser ? kUserGradient : null,
+              color: msg.isUser ? null : kSurface,
               borderRadius: BorderRadius.circular(16),
-              border: msg.isUser ? null : Border.all(color: widget.isPremium ? kGold.withOpacity(0.3) : kBrand.withOpacity(0.1)),
+              border: msg.isUser
+                  ? null
+                  : Border.all(
+                      color: widget.isPremium
+                          ? kGold.withOpacity(0.3)
+                          : kBrand.withOpacity(0.1)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (msg.imageBase64 != null) ...[ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(base64Decode(msg.imageBase64!), width: 150)), const SizedBox(height: 8)],
-                Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                if (msg.imageBase64 != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.memory(
+                        base64Decode(msg.imageBase64!),
+                        width: 150),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                Text(msg.text,
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 14)),
               ],
             ),
           ),
@@ -587,17 +742,56 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildImagePreview() => Container(padding: const EdgeInsets.all(8), child: Row(children: [Image.file(_selectedImage!, width: 50, height: 50), IconButton(icon: const Icon(Icons.close, color: Colors.red), onPressed: () => setState(() { _selectedImage = null; _selectedImageBase64 = null; }))]));
+  Widget _buildImagePreview() => Container(
+        padding: const EdgeInsets.all(8),
+        child: Row(children: [
+          Image.file(_selectedImage!, width: 50, height: 50),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.red),
+            onPressed: () => setState(() {
+              _selectedImage = null;
+              _selectedImageBase64 = null;
+            }),
+          )
+        ]),
+      );
 
   Widget _buildInputArea() {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: kSurface, border: Border(top: BorderSide(color: widget.isPremium ? kGold.withOpacity(0.2) : kBrand.withOpacity(0.1)))),
+      decoration: BoxDecoration(
+        color: kSurface,
+        border: Border(
+          top: BorderSide(
+            color: widget.isPremium
+                ? kGold.withOpacity(0.2)
+                : kBrand.withOpacity(0.1),
+          ),
+        ),
+      ),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.image, color: kBrand2), onPressed: _pickImage),
-          Expanded(child: TextField(controller: _controller, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(hintText: 'پیام...', border: InputBorder.none))),
-          IconButton(icon: _isLoading ? const CircularProgressIndicator() : Icon(Icons.send, color: widget.isPremium ? kGold : kBrand2), onPressed: _isLoading ? null : _send),
+          IconButton(
+              icon: const Icon(Icons.image, color: kBrand2),
+              onPressed: _pickImage),
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                  hintText: 'پیام...', border: InputBorder.none),
+            ),
+          ),
+          IconButton(
+            icon: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : Icon(Icons.send,
+                    color: widget.isPremium ? kGold : kBrand2),
+            onPressed: _isLoading ? null : _send,
+          ),
         ],
       ),
     );
@@ -612,12 +806,24 @@ class AIThinkingScreen extends StatefulWidget {
   State<AIThinkingScreen> createState() => _AIThinkingScreenState();
 }
 
-class _AIThinkingScreenState extends State<AIThinkingScreen> with SingleTickerProviderStateMixin {
+class _AIThinkingScreenState extends State<AIThinkingScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
+
   @override
-  void initState() { super.initState(); _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(); }
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(seconds: 2))
+      ..repeat();
+  }
+
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -626,9 +832,25 @@ class _AIThinkingScreenState extends State<AIThinkingScreen> with SingleTickerPr
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            RotationTransition(turns: _ctrl, child: Icon(widget.isPremium ? Icons.auto_awesome : Icons.smart_toy, size: 60, color: widget.isPremium ? kGold : kBrand2)),
+            RotationTransition(
+              turns: _ctrl,
+              child: Icon(
+                widget.isPremium
+                    ? Icons.auto_awesome
+                    : Icons.smart_toy,
+                size: 60,
+                color: widget.isPremium ? kGold : kBrand2,
+              ),
+            ),
             const SizedBox(height: 20),
-            Text(widget.isPremium ? 'هوش برتر در حال فکر کردن...' : 'هوشیار در حال فکر کردن...', style: TextStyle(color: widget.isPremium ? kGold : Colors.white, fontSize: 16)),
+            Text(
+              widget.isPremium
+                  ? 'هوش برتر در حال فکر کردن...'
+                  : 'هوشیار در حال فکر کردن...',
+              style: TextStyle(
+                  color: widget.isPremium ? kGold : Colors.white,
+                  fontSize: 16),
+            ),
           ],
         ),
       ),
